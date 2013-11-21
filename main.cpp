@@ -12,12 +12,10 @@ class TriangleWindow : public OpenGLWindow
 public:
     TriangleWindow();
 
-    void initialize();
-    void render();
+    void initialize(void);
+    void render(void);
 
 private:
-    GLuint loadShader(GLenum type, const char *source);
-
     GLuint m_posAttr;
     GLuint m_colAttr;
     GLuint m_matrixUniform;
@@ -64,14 +62,6 @@ static const char *fragmentShaderSource =
     "void main() {\n"
     "   gl_FragColor = col;\n"
     "}\n";
-
-GLuint TriangleWindow::loadShader(GLenum type, const char *source)
-{
-    GLuint shader = glCreateShader(type);
-    glShaderSource(shader, 1, &source, 0);
-    glCompileShader(shader);
-    return shader;
-}
 
 void TriangleWindow::initialize()
 {

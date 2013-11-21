@@ -6,15 +6,18 @@
 #include <QtGui/QPainter>
 
 OpenGLWindow::OpenGLWindow (QWindow * parent) : QWindow (parent), 
-	m_update_pending (false), m_animating (false),
-	m_context (0), m_device (0)
+	m_update_pending (false), m_animating (false), m_initialized (false),
+	m_device (0)
 {
 	setSurfaceType (QWindow::OpenGLSurface);
 }
 
 OpenGLWindow::~OpenGLWindow () {
-	delete m_device;
+	if (m_device != 0)
+		delete m_device;
 }
+
+/* Over written stuff */
 
 void OpenGLWindow::render (QPainter * painter) {
 	Q_UNUSED (painter);
@@ -35,8 +38,10 @@ void OpenGLWindow::render (void) {
 	render (&painter);
 }
 
+/* Render-triggering events */
+
 void OpenGLWindow::renderLater (void) {
-	if (!m_update_pending) {
+	if (not m_update_pending) {
 		m_update_pending = true;
 		QCoreApplication::postEvent (this, new QEvent (QEvent::UpdateRequest));
 	}
@@ -56,42 +61,44 @@ void OpenGLWindow::exposeEvent (QExposeEvent * event) {
 	Q_UNUSED (event);
 
 	if (isExposed ())
-		renderNow ();
+		renderLater ();
 }
 
 void OpenGLWindow::resizeEvent (QResizeEvent *event) {
 	Q_UNUSED (event);
 
 	if (isExposed ())
-		renderNow ();
+		renderLater ();
+}
+
+/* Render gl stuff */
+
+void OpenGLWindow::deferedInit (void) {
+	m_context.setFormat (requestedFormat ());
+	m_context.create ();
+
+	m_context.makeCurrent (this);
+
+	initializeOpenGLFunctions ();
+	initialize ();
+
+	m_initialized = true;
 }
 
 void OpenGLWindow::renderNow (void) {
+	m_update_pending = false;
+	
 	if (not isExposed ())
 		return;
 
-	m_update_pending = false;
-
-	bool needsInitialize = false;
-
-	if (!m_context) {
-		m_context = new QOpenGLContext (this);
-		m_context->setFormat (requestedFormat ());
-		m_context->create ();
-
-		needsInitialize = true;
-	}
-
-	m_context->makeCurrent (this);
-
-	if (needsInitialize) {
-		initializeOpenGLFunctions ();
-		initialize ();
-	}
+	if (Q_LIKELY (m_initialized))
+		m_context.makeCurrent (this);
+	else
+		deferedInit ();
 
 	render ();
 
-	m_context->swapBuffers (this);
+	m_context.swapBuffers (this);
 
 	if (m_animating)
 		renderLater ();
