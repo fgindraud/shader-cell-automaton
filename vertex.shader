@@ -1,7 +1,9 @@
-attribute highp vec4 posAttr;
+#version 130
 
-attribute lowp vec4 colAttr;
-varying lowp vec4 col;
+in highp vec4 posAttr;
+in lowp vec4 colAttr;
+
+out lowp vec4 col;
 
 void main() {
 	col = colAttr;
