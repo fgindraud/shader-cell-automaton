@@ -13,28 +13,12 @@ void main (void) {
 	float pos = texelFetch (prev_jacobi, tex_coords, 0).r;
 	float vit = texelFetch (prev_jacobi, tex_coords, 0).g;
 
-	float acc = - 24*texelFetch (prev_jacobi, tex_coords, 0).r;
-	acc -= 8*texelFetchOffset (prev_jacobi, tex_coords, 0, ivec2 (-1,  0)).r;
-	acc -= 8*texelFetchOffset (prev_jacobi, tex_coords, 0, ivec2 ( 1,  0)).r;
-	acc -= 8*texelFetchOffset (prev_jacobi, tex_coords, 0, ivec2 ( 0, -1)).r;
-	acc -= 8*texelFetchOffset (prev_jacobi, tex_coords, 0, ivec2 ( 0,  1)).r;
-	acc += 4*texelFetchOffset (prev_jacobi, tex_coords, 0, ivec2 (-2, -1)).r;
-	acc += 4*texelFetchOffset (prev_jacobi, tex_coords, 0, ivec2 (-2,  0)).r;
-	acc += 4*texelFetchOffset (prev_jacobi, tex_coords, 0, ivec2 (-2,  1)).r;
-	acc += 4*texelFetchOffset (prev_jacobi, tex_coords, 0, ivec2 ( 2, -1)).r;
-	acc += 4*texelFetchOffset (prev_jacobi, tex_coords, 0, ivec2 ( 2,  0)).r;
-	acc += 4*texelFetchOffset (prev_jacobi, tex_coords, 0, ivec2 ( 2,  1)).r;
-	acc += 4*texelFetchOffset (prev_jacobi, tex_coords, 0, ivec2 (-1, -2)).r;
-	acc += 4*texelFetchOffset (prev_jacobi, tex_coords, 0, ivec2 ( 0, -2)).r;
-	acc += 4*texelFetchOffset (prev_jacobi, tex_coords, 0, ivec2 ( 1, -2)).r;
-	acc += 4*texelFetchOffset (prev_jacobi, tex_coords, 0, ivec2 (-1,  2)).r;
-	acc += 4*texelFetchOffset (prev_jacobi, tex_coords, 0, ivec2 ( 0,  2)).r;
-	acc += 4*texelFetchOffset (prev_jacobi, tex_coords, 0, ivec2 ( 1,  2)).r;
-	acc += 2*texelFetchOffset (prev_jacobi, tex_coords, 0, ivec2 (-2, -2)).r;
-	acc += 2*texelFetchOffset (prev_jacobi, tex_coords, 0, ivec2 (-2,  2)).r;
-	acc += 2*texelFetchOffset (prev_jacobi, tex_coords, 0, ivec2 ( 2, -2)).r;
-	acc += 2*texelFetchOffset (prev_jacobi, tex_coords, 0, ivec2 ( 2,  2)).r;
-	acc /= 64.0;
+	float acc = -4*texelFetch (prev_jacobi, tex_coords, 0).r;
+	acc += texelFetchOffset (prev_jacobi, tex_coords, 0, ivec2 (-1,  0)).r;
+	acc += texelFetchOffset (prev_jacobi, tex_coords, 0, ivec2 ( 1,  0)).r;
+	acc += texelFetchOffset (prev_jacobi, tex_coords, 0, ivec2 ( 0, -1)).r;
+	acc += texelFetchOffset (prev_jacobi, tex_coords, 0, ivec2 ( 0,  1)).r;
+	acc /= 4;
 
 	//vit *= 0.95;
 	vit += acc;
