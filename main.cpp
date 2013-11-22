@@ -3,7 +3,7 @@
 int main (int argc, char ** argv) {
 	QGuiApplication app (argc, argv);
 
-	GlWindow window (QSize (500, 500)); // Here is the size of the jacobi map (doesn't change with the window size)
+	GlWindow window (QSize (640, 480)); // Here is the size of the jacobi map (doesn't change with the window size)
 	window.resize (640, 480);
 	window.show ();
 
@@ -60,12 +60,19 @@ void GlWindow::initRJ (void) {
 	m_rj_program->setUniformValue ("prev_jacobi", 0); // texture unit 0
 
 	// Create a initial value map (may be changed)
-	quint8 * img_data = new quint8[m_render_size.width () * m_render_size.height ()];
+	quint8 * img_data = new quint8[m_render_size.width () * m_render_size.height () * 2];
 	for (int y = 0; y < m_render_size.height (); ++y) {
 		for (int x = 0; x < m_render_size.width (); ++x) {
-			quint8 * cell = &img_data[x + y * m_render_size.width ()];
-			if (y % 20 < 3) *cell = 255;
-			else *cell = 0;
+			quint8 * cell = &img_data[(x + y * m_render_size.width ()) * 2];
+			int h = x - m_render_size.width () / 2;
+			int v = y - m_render_size.height () / 2;
+			if (h*h + v*v < 16*16) {
+				cell[0] = 255 * (16*16 - (h*h + v*v)) / (16*16);
+				cell[1] = 0;
+			} else {
+				cell[0] = 0;
+				cell[1] = 0;
+			}
 		}
 	}
 
@@ -74,7 +81,7 @@ void GlWindow::initRJ (void) {
 		m_rj_fbos[i] = new QOpenGLFramebufferObject (m_render_size,
 				QOpenGLFramebufferObject::NoAttachment,
 				GL_TEXTURE_2D, // standard 2D texture, will use texel*() to have absolute coords
-				GL_R32F); // one float32 per cell
+				GL_RG32F); // one float32 per cell
 
 		glBindTexture (GL_TEXTURE_2D, m_rj_fbos[i]->texture ());
 		glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -84,7 +91,7 @@ void GlWindow::initRJ (void) {
 		glTexSubImage2D (GL_TEXTURE_2D, // target
 				0, // lod (base)
 				0, 0, m_render_size.width (), m_render_size.height (), // size
-				GL_RED, GL_UNSIGNED_BYTE, img_data);
+				GL_RG, GL_UNSIGNED_BYTE, img_data);
 	}
 
 	delete [] img_data;
