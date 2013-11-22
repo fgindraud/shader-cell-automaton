@@ -55,8 +55,8 @@ void GlWindow::timer_end (void) {
 void GlWindow::initRJ (void) {
 	// Shaders
 	m_rj_program = new QOpenGLShaderProgram (this);
-	m_rj_program->addShaderFromSourceFile (QOpenGLShader::Vertex, "rj_vertex.shader");
-	m_rj_program->addShaderFromSourceFile (QOpenGLShader::Fragment, "rj_fragment.shader");
+	m_rj_program->addShaderFromSourceFile (QOpenGLShader::Vertex, "wave.vertex.glsl");
+	m_rj_program->addShaderFromSourceFile (QOpenGLShader::Fragment, "wave.fragment.glsl");
 	m_rj_program->link ();
 
 	m_rj_program->setUniformValue ("prev_jacobi", 0); // texture unit 0
@@ -68,8 +68,7 @@ void GlWindow::initRJ (void) {
 		for (int x = 0; x < m_render_size.width (); ++x) {
 			int h = x - m_render_size.width () / 2;
 			int v = y - m_render_size.height () / 2;
-			float r = (h*h + v*v)/(16.0*16.0);
-			img_data[y][x][0] = expf(-r/5.0)*sinf(r)*sinf(r);
+			img_data[y][x][0] = sinf(M_PI*h/48.0)*sinf(M_PI*v/48.0);
 			img_data[y][x][1] = 0;
 		}
 	}
@@ -135,8 +134,8 @@ void GlWindow::renderRJ (void) {
 void GlWindow::initRS (void) {
 	// Create shaders
 	m_rs_program = new QOpenGLShaderProgram (this);
-	m_rs_program->addShaderFromSourceFile (QOpenGLShader::Vertex, "rs_vertex.shader");
-	m_rs_program->addShaderFromSourceFile (QOpenGLShader::Fragment, "rs_fragment.shader");
+	m_rs_program->addShaderFromSourceFile (QOpenGLShader::Vertex, "screen.vertex.glsl");
+	m_rs_program->addShaderFromSourceFile (QOpenGLShader::Fragment, "screen.fragment.glsl");
 	m_rs_program->link ();
 
 	m_rs_program->setUniformValue ("jacobi_texture", 0); // Texture unit 0

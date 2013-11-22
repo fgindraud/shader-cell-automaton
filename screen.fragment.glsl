@@ -13,6 +13,6 @@ void main (void) {
 	float p = texture (jacobi_texture, pos).r;
 	float v = texture (jacobi_texture, pos).g;
 
-	gl_FragColor = vec4 (clamp(p, 0.0, 1.0), clamp(v, 0.0, 1.0), clamp(-v, 0.0, 1.0), 1.0);
+	gl_FragColor = vec4 (-p, p, 0.0, 1.0);
 	//gl_FragColor = vec4 (p, p, p, 1.0);
 }
