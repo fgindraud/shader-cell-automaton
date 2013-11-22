@@ -1,7 +1,7 @@
 #version 130
 
-in lowp vec4 col;
+in lowp vec3 col;
 
 void main () {
-	gl_FragColor = col;
+	gl_FragColor = vec4 (col, 1.0);
 }

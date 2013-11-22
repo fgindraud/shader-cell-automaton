@@ -5,9 +5,13 @@
 #include <QtGui/QOpenGLPaintDevice>
 #include <QtGui/QPainter>
 
-OpenGLWindow::OpenGLWindow (QWindow * parent) : QWindow (parent), 
-	m_update_pending (false), m_animating (false), m_initialized (false),
-	m_device (0)
+/* Init */
+
+OpenGLWindow::OpenGLWindow (QWindow * parent, bool want_gl_log) :
+	QWindow (parent),
+	m_animating (false), m_want_log (want_gl_log),
+	m_update_pending (false), m_initialized (false),
+	m_device (0), m_logger (0)
 {
 	setSurfaceType (QWindow::OpenGLSurface);
 }
@@ -15,6 +19,41 @@ OpenGLWindow::OpenGLWindow (QWindow * parent) : QWindow (parent),
 OpenGLWindow::~OpenGLWindow () {
 	if (m_device != 0)
 		delete m_device;
+}
+
+void OpenGLWindow::deferedInit (void) {
+	m_context.setFormat (requestedFormat ());
+	m_context.create ();
+
+	m_context.makeCurrent (this);
+
+	// Debug logger
+	if (m_want_log) {
+		if (m_context.hasExtension (QByteArrayLiteral ("GL_KHR_debug"))) {
+			// Try enabling debug
+			m_logger = new QOpenGLDebugLogger (this);
+			QObject::connect (m_logger, SIGNAL (messageLogged (QOpenGLDebugMessage)),
+					this, SLOT (onDebugMessage (QOpenGLDebugMessage)));
+
+			if (m_logger->initialize ()) {
+				m_logger->startLogging (QOpenGLDebugLogger::SynchronousLogging);
+				m_logger->enableMessages ();
+			} else {
+				qFatal ("QOpenGLDebugLogger : cannot initialize !");
+			}
+		} else {
+			qDebug () << "QOpenGLDebugLogger : no GL_KHR_debug extension, disabled";
+		}
+	}
+
+	initializeOpenGLFunctions ();
+	initialize ();
+
+	m_initialized = true;
+}
+
+void OpenGLWindow::onDebugMessage (QOpenGLDebugMessage message) {
+	qDebug () << message;
 }
 
 /* Over written stuff */
@@ -42,7 +81,7 @@ void OpenGLWindow::render (void) {
 
 void OpenGLWindow::renderLater (void) {
 	if (not m_update_pending) {
-		m_update_pending = true;
+		m_update_pending = true; // Avoid multiple render requests
 		QCoreApplication::postEvent (this, new QEvent (QEvent::UpdateRequest));
 	}
 }
@@ -73,21 +112,9 @@ void OpenGLWindow::resizeEvent (QResizeEvent *event) {
 
 /* Render gl stuff */
 
-void OpenGLWindow::deferedInit (void) {
-	m_context.setFormat (requestedFormat ());
-	m_context.create ();
-
-	m_context.makeCurrent (this);
-
-	initializeOpenGLFunctions ();
-	initialize ();
-
-	m_initialized = true;
-}
-
 void OpenGLWindow::renderNow (void) {
 	m_update_pending = false;
-	
+
 	if (not isExposed ())
 		return;
 
