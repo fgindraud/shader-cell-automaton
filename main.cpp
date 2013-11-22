@@ -1,46 +1,9 @@
-#include "openglwindow.h"
-
-#include <QtGui/QGuiApplication>
-#include <QtGui/QOpenGLShaderProgram>
-#include <QtGui/QOpenGLFramebufferObject>
-
-#include <QtGui/QScreen>
-#include <QtCore/qmath.h>
-
-class GlWindow : public OpenGLWindow {
-	public:
-		GlWindow (const QSize & render_size);
-		~GlWindow ();
-
-		void initialize (void);
-		void render (void);
-
-	private:
-		/* renderScreen */
-		QOpenGLShaderProgram * m_rs_program;
-		int m_rs_pos;
-		int m_rs_texture;
-		int m_rs_window_size;
-		void initRS (void);
-		void renderRS (void);
-
-		/* renderJacobi */
-		QOpenGLShaderProgram * m_rj_program;
-		QOpenGLFramebufferObject * m_rj_fbos[2];
-		int m_rj_texture;
-		int m_rj_vertex;
-		int m_rj_target_fbo;
-		void initRJ (void);
-		void renderRJ (void);
-
-		QSize m_render_size;
-		int m_frame;
-};
+#include "main.h"
 
 int main (int argc, char ** argv) {
 	QGuiApplication app (argc, argv);
 
-	GlWindow window (QSize (500, 500));
+	GlWindow window (QSize (5000, 5000));
 	window.resize (640, 480);
 	window.show ();
 
@@ -58,15 +21,31 @@ GlWindow::GlWindow (const QSize & render_size) : OpenGLWindow (0, true),
 GlWindow::~GlWindow () {
 }
 
+
 void GlWindow::initialize () {
 	initRJ ();
 	initRS ();
+	
+	timer_init ();
 }
 
 void GlWindow::render () {
 	renderRJ ();
 	renderRS ();
 	++m_frame;
+}
+
+/* timer stuff */
+void GlWindow::timer_init (void) {
+	connect (&m_timer, SIGNAL (timeout ()), this, SLOT (timer_end ()));
+	m_timer.start (10000);
+	m_frame_offset = 0;
+}
+
+void GlWindow::timer_end (void) {
+	double fps_elapsed = static_cast< double > (m_frame - m_frame_offset) / 10.;
+	qDebug () << "FPS" << fps_elapsed;
+	m_frame_offset = m_frame;
 }
 
 /* Render Jacobi */
@@ -78,27 +57,9 @@ void GlWindow::initRJ (void) {
 	m_rj_program->addShaderFromSourceFile (QOpenGLShader::Fragment, "rj_fragment.shader");
 	m_rj_program->link ();
 
-	// Handles to I
-	m_rj_vertex = m_rj_program->attributeLocation ("vertex2DCoord");
-	m_rj_texture = m_rj_program->attributeLocation ("prevJacobi");
-	
-	// Init framebuffers
-	m_rj_target_fbo = 1; // initial target is 1, so initial source is 0
-	for (int i = 0; i < 2; ++i) {
-		m_rj_fbos[i] = new QOpenGLFramebufferObject (m_render_size,
-				QOpenGLFramebufferObject::NoAttachment,
-				GL_TEXTURE_2D, // standard 2D texture, will use texel*() to have absolute coords
-				GL_R32F); // one float32 per cell
+	m_rj_program->setUniformValue ("prev_jacobi", 0); // texture unit 0
 
-		glBindTexture (GL_TEXTURE_2D, m_rj_fbos[i]->texture ());
-		glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	}
-
-	/* Set initial texture */
-	QOpenGLFramebufferObject * init_fbo = m_rj_fbos[0];
-
-	// Draw
+	// Create a initial value map
 	quint8 * img_data = new quint8[m_render_size.width () * m_render_size.height ()];
 	for (int y = 0; y < m_render_size.height (); ++y) {
 		for (int x = 0; x < m_render_size.width (); ++x) {
@@ -108,16 +69,62 @@ void GlWindow::initRJ (void) {
 		}
 	}
 
-	// Write to texture
-	glBindTexture (GL_TEXTURE_2D, init_fbo->texture ());
-	glTexSubImage2D (GL_TEXTURE_2D, // target
-			0, // lod (base)
-			0, 0, m_render_size.width (), m_render_size.height (), // size
-			GL_RED, GL_UNSIGNED_BYTE, img_data);
+	// Init framebuffers
+	for (int i = 0; i < 2; ++i) {
+		m_rj_fbos[i] = new QOpenGLFramebufferObject (m_render_size,
+				QOpenGLFramebufferObject::NoAttachment,
+				GL_TEXTURE_2D, // standard 2D texture, will use texel*() to have absolute coords
+				GL_R32F); // one float32 per cell
+
+		glBindTexture (GL_TEXTURE_2D, m_rj_fbos[i]->texture ());
+		glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+		// Put initial image
+		glTexSubImage2D (GL_TEXTURE_2D, // target
+				0, // lod (base)
+				0, 0, m_render_size.width (), m_render_size.height (), // size
+				GL_RED, GL_UNSIGNED_BYTE, img_data);
+	}
+
+	delete [] img_data;
 }
 
 void GlWindow::renderRJ (void) {
-	//GLfloat lastColor = 0.5f * (1.0f + sin (10.0f * m_frame / screen ()->refreshRate ()));
+	glViewport(0, 0, m_render_size.width (), m_render_size.height ());
+
+	glClear (GL_COLOR_BUFFER_BIT);
+
+	m_rj_program->bind ();
+
+	// origin texture (on unit 0)
+	glActiveTexture (GL_TEXTURE0);
+	glBindTexture (GL_TEXTURE_2D, m_rj_fbos[m_frame % 2]->texture ());
+
+	// set target texture
+	m_rj_fbos[1 - m_frame % 2]->bind ();
+
+	static const GLfloat vertices[] = {
+		1.0f, 1.0f,
+		1.0f, -1.0f,
+		-1.0f, -1.0f,
+		-1.0f, 1.0f
+	};
+
+	int vertex_loc = m_rj_program->attributeLocation ("vertex_coords");
+
+	m_rj_program->setAttributeArray (vertex_loc, vertices, 2);
+
+	m_rj_program->enableAttributeArray (vertex_loc);
+
+	glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+	m_rj_program->disableAttributeArray (vertex_loc);
+
+	m_rj_program->release();
+
+	// reset target
+	QOpenGLFramebufferObject::bindDefault ();
 }
 
 /* Render for screen */
@@ -129,9 +136,7 @@ void GlWindow::initRS (void) {
 	m_rs_program->addShaderFromSourceFile (QOpenGLShader::Fragment, "rs_fragment.shader");
 	m_rs_program->link ();
 
-	// Get handles to I/Os
-	m_rs_pos = m_rs_program->attributeLocation ("vertex2DCoord");
-	m_rs_texture = m_rs_program->attributeLocation ("jacobi");
+	m_rs_program->setUniformValue ("jacobi_texture", 0); // Texture unit 0
 }
 
 void GlWindow::renderRS (void) {
@@ -141,8 +146,9 @@ void GlWindow::renderRS (void) {
 
 	m_rs_program->bind ();
 
-	// texture
-	m_rs_program->setUniformValue (m_rs_texture, m_rj_fbos[0]->texture ());
+	// texture on unit 0	
+	glActiveTexture (GL_TEXTURE0);
+	glBindTexture (GL_TEXTURE_2D, m_rj_fbos[1 - m_frame % 2]->texture ());
 
 	m_rs_program->setUniformValue ("width", (GLfloat) width ());
 	m_rs_program->setUniformValue ("height", (GLfloat) height ());
@@ -154,13 +160,15 @@ void GlWindow::renderRS (void) {
 		-1.0f, 1.0f
 	};
 
-	m_rs_program->setAttributeArray (m_rs_pos, vertices, 2);
+	int vertex_loc = m_rs_program->attributeLocation ("vertex_coords");
 
-	m_rs_program->enableAttributeArray (m_rs_pos);
+	m_rs_program->setAttributeArray (vertex_loc, vertices, 2);
+
+	m_rs_program->enableAttributeArray (vertex_loc);
 
 	glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
-	m_rs_program->disableAttributeArray (m_rs_pos);
+	m_rs_program->disableAttributeArray (vertex_loc);
 
 	m_rs_program->release();
 }
