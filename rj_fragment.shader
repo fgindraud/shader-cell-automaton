@@ -5,7 +5,7 @@ uniform sampler2D prev_jacobi;
 
 //out vec4 gl_FragColor;
 
-const float prev_ratio = 0.9;
+const float prev_ratio = 0.1;
 
 void main (void) {
 	ivec2 tex_coords = ivec2 (int (gl_FragCoord.s), int (gl_FragCoord.t));

@@ -3,7 +3,7 @@
 int main (int argc, char ** argv) {
 	QGuiApplication app (argc, argv);
 
-	GlWindow window (QSize (5000, 5000));
+	GlWindow window (QSize (500, 500)); // Here is the size of the jacobi map (doesn't change with the window size)
 	window.resize (640, 480);
 	window.show ();
 
@@ -59,7 +59,7 @@ void GlWindow::initRJ (void) {
 
 	m_rj_program->setUniformValue ("prev_jacobi", 0); // texture unit 0
 
-	// Create a initial value map
+	// Create a initial value map (may be changed)
 	quint8 * img_data = new quint8[m_render_size.width () * m_render_size.height ()];
 	for (int y = 0; y < m_render_size.height (); ++y) {
 		for (int x = 0; x < m_render_size.width (); ++x) {
