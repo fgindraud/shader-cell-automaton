@@ -1,10 +1,12 @@
 #include "main.h"
 
+#include <cmath>
+
 int main (int argc, char ** argv) {
 	QGuiApplication app (argc, argv);
 
-	GlWindow window (QSize (640, 480)); // Here is the size of the jacobi map (doesn't change with the window size)
-	window.resize (640, 480);
+	GlWindow window (QSize (480, 480)); // Here is the size of the jacobi map (doesn't change with the window size)
+	window.resize (480, 480);
 	window.show ();
 
 	window.setAnimating (true);
@@ -60,19 +62,15 @@ void GlWindow::initRJ (void) {
 	m_rj_program->setUniformValue ("prev_jacobi", 0); // texture unit 0
 
 	// Create a initial value map (may be changed)
-	quint8 * img_data = new quint8[m_render_size.width () * m_render_size.height () * 2];
+	GLfloat img_data[m_render_size.height ()][m_render_size.width ()][2];
+
 	for (int y = 0; y < m_render_size.height (); ++y) {
 		for (int x = 0; x < m_render_size.width (); ++x) {
-			quint8 * cell = &img_data[(x + y * m_render_size.width ()) * 2];
 			int h = x - m_render_size.width () / 2;
 			int v = y - m_render_size.height () / 2;
-			if (h*h + v*v < 16*16) {
-				cell[0] = 255 * (16*16 - (h*h + v*v)) / (16*16);
-				cell[1] = 0;
-			} else {
-				cell[0] = 0;
-				cell[1] = 0;
-			}
+			float r = (h*h + v*v)/(16.0*16.0);
+			img_data[y][x][0] = expf(-r/5.0)*sinf(r)*sinf(r);
+			img_data[y][x][1] = 0;
 		}
 	}
 
@@ -91,10 +89,8 @@ void GlWindow::initRJ (void) {
 		glTexSubImage2D (GL_TEXTURE_2D, // target
 				0, // lod (base)
 				0, 0, m_render_size.width (), m_render_size.height (), // size
-				GL_RG, GL_UNSIGNED_BYTE, img_data);
+				GL_RG, GL_FLOAT, img_data);
 	}
-
-	delete [] img_data;
 }
 
 void GlWindow::renderRJ (void) {
