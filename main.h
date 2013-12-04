@@ -9,7 +9,7 @@
 class GlWindow : public OpenGLWindow {
 	Q_OBJECT
 	public:
-		GlWindow (const QSize & render_size);
+		GlWindow ();
 		~GlWindow ();
 
 		void initialize (void);
@@ -21,13 +21,6 @@ class GlWindow : public OpenGLWindow {
 		void initRS (void);
 		void renderRS (void);
 
-		/* renderJacobi */
-		QOpenGLShaderProgram * m_rj_program;
-		QOpenGLFramebufferObject * m_rj_fbos[2];
-		void initRJ (void);
-		void renderRJ (void);
-
-		QSize m_render_size;
 		quint64 m_frame;
 	
 		QTimer m_timer;
