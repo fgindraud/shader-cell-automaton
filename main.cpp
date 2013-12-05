@@ -58,7 +58,7 @@ void GlWindow::renderRS (void) {
 
 	m_rs_program->setUniformValue ("width", GLfloat (width ()));
 	m_rs_program->setUniformValue ("height", GLfloat (height ()));
-	m_rs_program->setUniformValue ("var", GLfloat ((m_frame % 1000) / 2));
+	m_rs_program->setUniformValue ("var", GLfloat (m_frame % 1000));
 
 	static const GLfloat vertices[] = {
 		1.0f, 1.0f,
